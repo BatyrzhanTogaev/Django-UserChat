@@ -1,0 +1,5 @@
+<form method="post">
+    {% csrf_token %}
+    <input name="message" type="text" placeholder="Введите сообщение..." style="width: 80%;">
+    <button type="submit">Отправить</button>
+</form>
