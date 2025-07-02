@@ -1,5 +1,113 @@
-<form method="post">
-    {% csrf_token %}
-    <input name="message" type="text" placeholder="Введите сообщение..." style="width: 80%;">
-    <button type="submit">Отправить</button>
-</form>
+привет {{ user.username }}
+<h2>Чат с {{ target_user.username }}</h2>
+
+<style>
+    #chat-log {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 12px;
+        height: 400px;
+        overflow-y: auto;
+        background-color: #f0f0f0;
+    }
+    .message {
+        max-width: 70%;
+        padding: 8px 12px;
+        border-radius: 16px;
+        word-wrap: break-word;
+        font-size: 14px;
+    }
+    .my-message {
+        align-self: flex-end;
+        background-color: #dcf8c6; /* WhatsApp зеленый */
+    }
+    .other-message {
+        align-self: flex-start;
+        background-color: #ffffff;
+        border: 1px solid #ddd;
+    }
+    #chat-controls {
+        margin-top: 10px;
+        display: flex;
+        gap: 8px;
+    }
+    #chat-message-input {
+        flex: 1;
+        padding: 8px;
+        font-size: 14px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+    }
+    #chat-message-submit {
+        padding: 8px 16px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    #chat-message-submit:hover {
+        background-color: #45a049;
+    }
+</style>
+
+<div id="chat-log"></div>
+
+<div id="chat-controls">
+    <input id="chat-message-input" type="text" placeholder="Введите сообщение...">
+    <button id="chat-message-submit">Отправить</button>
+</div>
+
+<!-- Сюда безопасно выгружаем JSON -->
+{{ messages|json_script:"messages-data" }}
+
+<script>
+    const chatSocket = new WebSocket(
+        'ws://' + window.location.host + '/ws/chat/{{ target_user.username }}/'
+    );
+
+    const currentUserId = {{ request.user.id }};
+    const chatLog = document.querySelector('#chat-log');
+
+    function addMessageToChat(message, senderId) {
+        const el = document.createElement('div');
+        el.classList.add('message');
+        if (senderId === currentUserId) {
+            el.classList.add('my-message');
+        } else {
+            el.classList.add('other-message');
+        }
+        el.textContent = message;
+        chatLog.appendChild(el);
+        chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    // Загружаем историю сообщений
+    const messages = JSON.parse(document.getElementById('messages-data').textContent);
+    messages.forEach(msg => {
+        addMessageToChat(msg.text, msg.sender_id);
+    });
+
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        addMessageToChat(data.message, data.sender_id);
+    };
+
+    chatSocket.onclose = function(e) {
+        console.error('WebSocket закрыт неожиданно.');
+    };
+
+    document.querySelector('#chat-message-submit').onclick = function() {
+        const inputDom = document.querySelector('#chat-message-input');
+        const message = inputDom.value.trim();
+        if (message !== '') {
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            inputDom.value = '';
+        }
+    };
+</script>

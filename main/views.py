@@ -18,12 +18,12 @@ def chat_view(request, username):
                 receiver=target_user,
                 text=text
             )
-              # чтобы избежать повторной отправки при обновлении
+            # чтобы избежать повторной отправки при обновлении
 
-    messages = Message.objects.filter(
+    messages = list(Message.objects.filter(
         Q(sender=request.user, receiver=target_user) |
         Q(sender=target_user, receiver=request.user)
-    ).order_by('timestamp')
+    ).order_by('timestamp').values('text', 'sender_id'))
 
     return render(request, 'main/chat.html', {
         'target_user': target_user,
