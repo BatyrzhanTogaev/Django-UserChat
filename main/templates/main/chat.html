@@ -1,113 +1,103 @@
-привет {{ user.username }}
-<h2>Чат с {{ target_user.username }}</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Чат</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; display: flex; height: 100vh; }
+        .sidebar { width: 300px; border-right: 1px solid #ccc; padding: 10px; overflow-y: auto; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; }
+        #chat-log { flex: 1; padding: 10px; overflow-y: auto; background: #f9f9f9; }
+        .message { margin-bottom: 5px; max-width: 60%; padding: 6px 10px; border-radius: 12px; }
+        .my-message { background: #dcf8c6; align-self: flex-end; }
+        .other-message { background: #fff; border: 1px solid #ddd; align-self: flex-start; }
+        .chat-controls { display: flex; border-top: 1px solid #ccc; }
+        #chat-message-input { flex: 1; padding: 10px; border: none; }
+        #chat-message-submit { padding: 10px; background: #4caf50; color: white; border: none; cursor: pointer; }
+        a { text-decoration: none; color: #333; display: block; padding: 5px; border-radius: 5px; }
+        a:hover { background: #e0e0e0; }
+    </style>
+</head>
+<body>
 
-<style>
-    #chat-log {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        padding: 12px;
-        height: 400px;
-        overflow-y: auto;
-        background-color: #f0f0f0;
-    }
-    .message {
-        max-width: 70%;
-        padding: 8px 12px;
-        border-radius: 16px;
-        word-wrap: break-word;
-        font-size: 14px;
-    }
-    .my-message {
-        align-self: flex-end;
-        background-color: #dcf8c6; /* WhatsApp зеленый */
-    }
-    .other-message {
-        align-self: flex-start;
-        background-color: #ffffff;
-        border: 1px solid #ddd;
-    }
-    #chat-controls {
-        margin-top: 10px;
-        display: flex;
-        gap: 8px;
-    }
-    #chat-message-input {
-        flex: 1;
-        padding: 8px;
-        font-size: 14px;
-        border-radius: 8px;
-        border: 1px solid #ccc;
-    }
-    #chat-message-submit {
-        padding: 8px 16px;
-        background-color: #4caf50;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-    }
-    #chat-message-submit:hover {
-        background-color: #45a049;
-    }
-</style>
+<div class="sidebar">
+    <form method="get">
+        <input type="text" name="q" placeholder="Поиск по нику..." value="{{ search_query }}" style="width: 100%; padding: 5px;">
+    </form>
+    <h4>Чаты:</h4>
+    {% for u in chat_users %}
+        <a href="{% url 'chat' u.username %}">{{ u.username }}</a>
+    {% empty %}
+        <p>Нет чатов</p>
+    {% endfor %}
 
-<div id="chat-log"></div>
-
-<div id="chat-controls">
-    <input id="chat-message-input" type="text" placeholder="Введите сообщение...">
-    <button id="chat-message-submit">Отправить</button>
+    {% if search_results %}
+        <h4>Результаты поиска:</h4>
+        {% for u in search_results %}
+            <a href="{% url 'chat' u.username %}">{{ u.username }}</a>
+        {% endfor %}
+    {% endif %}
 </div>
 
-<!-- Сюда безопасно выгружаем JSON -->
-{{ messages|json_script:"messages-data" }}
+<div class="chat-area">
+    {% if target_user %}
+        <h3 style="margin: 10px;">Чат с {{ target_user.username }}</h3>
+        <div id="chat-log"></div>
+        <div class="chat-controls">
+            <input id="chat-message-input" type="text" placeholder="Введите сообщение...">
+            <button id="chat-message-submit">Отправить</button>
+        </div>
 
-<script>
-    const chatSocket = new WebSocket(
-        'ws://' + window.location.host + '/ws/chat/{{ target_user.username }}/'
-    );
+        {{ messages|json_script:"messages-data" }}
 
-    const currentUserId = {{ request.user.id }};
-    const chatLog = document.querySelector('#chat-log');
+        <script>
+            const chatSocket = new WebSocket(
+                'ws://' + window.location.host + '/ws/chat/{{ target_user.username }}/'
+            );
 
-    function addMessageToChat(message, senderId) {
-        const el = document.createElement('div');
-        el.classList.add('message');
-        if (senderId === currentUserId) {
-            el.classList.add('my-message');
-        } else {
-            el.classList.add('other-message');
-        }
-        el.textContent = message;
-        chatLog.appendChild(el);
-        chatLog.scrollTop = chatLog.scrollHeight;
-    }
+            const currentUserId = {{ request.user.id }};
+            const chatLog = document.getElementById('chat-log');
 
-    // Загружаем историю сообщений
-    const messages = JSON.parse(document.getElementById('messages-data').textContent);
-    messages.forEach(msg => {
-        addMessageToChat(msg.text, msg.sender_id);
-    });
+            function addMessageToChat(message, senderId) {
+                const el = document.createElement('div');
+                el.classList.add('message');
+                if (senderId === currentUserId) {
+                    el.classList.add('my-message');
+                } else {
+                    el.classList.add('other-message');
+                }
+                el.textContent = message;
+                chatLog.appendChild(el);
+                chatLog.scrollTop = chatLog.scrollHeight;
+            }
 
-    chatSocket.onmessage = function(e) {
-        const data = JSON.parse(e.data);
-        addMessageToChat(data.message, data.sender_id);
-    };
+            const messages = JSON.parse(document.getElementById('messages-data').textContent);
+            messages.forEach(msg => {
+                addMessageToChat(msg.text, msg.sender_id);
+            });
 
-    chatSocket.onclose = function(e) {
-        console.error('WebSocket закрыт неожиданно.');
-    };
+            chatSocket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                addMessageToChat(data.message, data.sender_id);
+            };
 
-    document.querySelector('#chat-message-submit').onclick = function() {
-        const inputDom = document.querySelector('#chat-message-input');
-        const message = inputDom.value.trim();
-        if (message !== '') {
-            chatSocket.send(JSON.stringify({
-                'message': message
-            }));
-            inputDom.value = '';
-        }
-    };
-</script>
+            chatSocket.onclose = function(e) {
+                console.error('WebSocket закрыт.');
+            };
+
+            document.getElementById('chat-message-submit').onclick = function() {
+                const input = document.getElementById('chat-message-input');
+                const message = input.value.trim();
+                if (message !== '') {
+                    chatSocket.send(JSON.stringify({'message': message}));
+                    input.value = '';
+                }
+            };
+        </script>
+    {% else %}
+        <p style="margin: auto; font-size: 18px;">Выберите чат или найдите пользователя для начала общения.</p>
+    {% endif %}
+</div>
+
+</body>
+</html>

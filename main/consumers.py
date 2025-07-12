@@ -32,7 +32,8 @@ class ChatConsumers(AsyncJsonWebsocketConsumer):
         sender = self.scope['user']
         receiver_username = self.username
         User = get_user_model()
-        receiver = await database_sync_to_async(User.objects.get)(username=receiver_username)
+        receiver = await database_sync_to_async(
+            User.objects.get)(username=receiver_username)
 
         await database_sync_to_async(Message.objects.create)(
             sender=sender,

@@ -1,31 +1,56 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from .models import Message
 from django.db.models import Q
-from .models import Message
 
 
 @login_required
-def chat_view(request, username):
-    target_user = get_object_or_404(User, username=username)
+def chat_view(request, username=None):
+    user = request.user
+    chats = Message.objects.filter(
+        Q(sender=user) | Q(receiver=user)
+    ).order_by('-timestamp')
 
-    if request.method == 'POST':
-        text = request.POST.get('message')
-        if text:
-            Message.objects.create(
-                sender=request.user,
-                receiver=target_user,
-                text=text
-            )
-            # чтобы избежать повторной отправки при обновлении
+    chat_users = set()
+    for chat in chats:
+        if chat.sender != user:
+            chat_users.add(chat.sender)
+        if chat.receiver != user:
+            chat_users.add(chat.receiver)
 
-    messages = list(Message.objects.filter(
-        Q(sender=request.user, receiver=target_user) |
-        Q(sender=target_user, receiver=request.user)
-    ).order_by('timestamp').values('text', 'sender_id'))
+    target_user = None
+    messages = []
+
+    if username:
+        target_user = get_object_or_404(User, username=username)
+
+        if request.method == 'POST':
+            text = request.POST.get('message')
+            if text:
+                Message.objects.create(
+                    sender=request.user,
+                    receiver=target_user,
+                    text=text
+                )
+                return redirect('chat', username=username)
+
+        messages = list(Message.objects.filter(
+            Q(sender=request.user, receiver=target_user) |
+            Q(sender=target_user, receiver=request.user)
+        ).order_by('timestamp').values('text', 'sender_id'))
+
+    search_query = request.GET.get('q', '').strip()
+    search_results = []
+
+    if search_query:
+        search_results = User.objects.filter(
+            username__icontains=search_query).exclude(id=request.user.id)[:10]
 
     return render(request, 'main/chat.html', {
         'target_user': target_user,
-        'messages': messages
+        'messages': messages,
+        'chat_users': chat_users,
+        'search_results': search_results,
+        'search_query': search_query,
     })
