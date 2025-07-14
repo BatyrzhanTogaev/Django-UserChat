@@ -6,7 +6,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Войти</title>
-    <link rel="stylesheet" href="{% static 'user/login.css' %}">
 </head>
 <body>
   <div class="login-container">
@@ -19,6 +18,7 @@
 
       <p class="register-link">Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
   </div>
+
   <style>
     body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -94,5 +94,6 @@
         text-decoration: underline;
     }
   </style>
+
 </body>
 </html>
