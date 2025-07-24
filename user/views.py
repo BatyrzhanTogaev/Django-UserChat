@@ -4,6 +4,9 @@ from django.contrib.auth import login, authenticate
 
 
 def register(request):
+    '''
+    Форма для регистрацией пользователя и испольует форму Django
+    '''
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():

@@ -7,7 +7,7 @@ SECRET_KEY = "django-icure-5x3(9@62x41w968pc-d&s9a%d-kk)!vx17rm+-zkkv*ux55uz!"
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['192.168.8.49', 'localhost', '127.0.0.1']
 
 INSTALLED_APPS = [
     "django.contrib.admin",
